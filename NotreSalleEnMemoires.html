@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
+  <!-- Dans votre <head> -->
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <title>Notre Salle en Mémoires</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Segoe UI', sans-serif;
+      background: #F0F2F5;
+      color: #333333;
+      overflow-x: hidden;
+    }
+
+    .container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background-color: #2C3E50;
+      color: white;
+      padding: 1em;
+      text-align: center;
+      font-size: 1.7em;
+      font-weight: bold;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    nav {
+      background-color: #2C3E50;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1em;
+      padding: 0.5em;
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+      padding: 0.75em 1.5em;
+      font-weight: bold;
+      background: linear-gradient(45deg, #3498DB, #2980B9);
+      border-radius: 30px;
+      margin: 0.5em;
+      transition: transform 0.2s ease, box-shadow 0.3s ease;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      display: inline-block;
+      font-size: 1.1em;
+      flex: 1 1 auto;
+      text-align: center;
+    }
+    nav a:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+      background: linear-gradient(45deg, #5dade2, #3498DB);
+    }
+
+    section {
+      padding: 5vw 5vw;
+      display: none;
+      animation: fadeIn 0.5s ease forwards;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    section.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-group {
+      margin-bottom: 1em;
+      padding: 0.5em 0;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    button {
+      padding: 0.75em;
+      width: 100%;
+      margin-top: 0.5em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1em;
+    }
+
+    button {
+      background-color: #27AE60;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #2ECC71;
+    }
+
+    .gallery, .course-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1em;
+      margin-top: 1em;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.09);
+      padding: 1.5em;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .gallery div, .course-list div {
+      background: rgba(255, 255, 255, 0.6);
+      padding: 1em;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      flex: 1 1 100%;
+    }
+
+    @media (min-width: 600px) {
+      .gallery div, .course-list div {
+        flex: 1 1 calc(50% - 1em);
+      }
+    }
+
+    @media (min-width: 900px) {
+      .gallery div, .course-list div {
+        flex: 1 1 calc(33.333% - 1em);
+      }
+    }
+
+    .zoomable {
+      cursor: zoom-in;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border-radius: 8px;
+      max-height: 300px;
+      object-fit: cover;
+    }
+    .zoomable.zoomed {
+      transform: scale(2.5);
+      z-index: 10000;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      cursor: zoom-out;
+    }
+    .lightbox-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      backdrop-filter: blur(5px);
+    }
+    .lightbox-content {
+      max-width: 80%;
+      max-height: 80%;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      border-radius: 10px;
+      transition: transform 0.3s ease;
+      cursor: zoom-out;
+    }
+
+    .intro-text {
+      font-style: italic;
+      margin-bottom: 1em;
+      color: #7F8C8D;
+      animation: fadeIn 1s ease-in-out;
+    }
+
+    #courseSearch {
+      padding: 0.5em;
+      margin: 1em 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 100%;
+      font-size: 1em;
+    }
+
+    footer {
+      text-align: center;
+      padding: 15px;
+      background: #f2f2f2;
+      margin-top: auto;
+    }
+
+    footer img {
+      height: 40px;
+      vertical-align: middle;
+    }
+
+    img, video {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+
+    .quiz-question {
+      margin-bottom: 1em;
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+    .result {
+      margin-top: 1em;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>Notre Salle en Mémoires</header>
+  
+    <nav>
+      <a href="#" onclick="showSection('souvenirs')">📸 Souvenirs</a>
+      <a href="#" onclick="showSection('cours')">📚 Cours</a>
+      <a href="#" onclick="showSection('jeu')">🎮 Jeu</a>
+    </nav>
+  
+    <section id="souvenirs" class="active">
+      <p class="intro-text">Ces souvenirs représentent notre parcours universitaire, entre fous rires, stress, et réussites... 📸</p>
+      <h3>Ajouter un souvenir</h3>
+      <div class="form-group">
+        <input type="file" id="souvenirFile" accept="image/*, video/*">
+        <input type="text" id="souvenirText" placeholder="Un petit mot avec le souvenir (facultatif)">
+        <button onclick="addSouvenir()">Envoyer</button>
+      </div>
+      <h2>Galerie de Souvenirs</h2>
+      <div class="gallery" id="souvenirGallery"></div>
+    </section>
+  
+    <section id="cours">
+      <p class="intro-text">Ici, tous les cours que nous avons partagés... pour réviser, partager, s'entraider ! 📚</p>
+      <h3>Déposer un cours</h3>
+      <div class="form-group">
+        <input type="file" id="courseFile">
+        <input type="text" id="courseTitle" placeholder="Titre ou matière">
+        <button onclick="addCourse()">Déposer</button>
+      </div>
+      <input type="text" id="courseSearch" placeholder="Rechercher un cours (ex: maths)">
+      <h2>Nos Cours</h2>
+      <div class="course-list" id="courseList"></div>
+    </section>
+  
+    <section id="jeu">
+      <p class="intro-text">Teste tes souvenirs, ta mémoire... et un peu ta logique ! 🎲</p>
+      <h2>Jeu : Qui a dit ça ?</h2>
+      <div class="quiz-question" id="quizQuestion">Chargement...</div>
+      <input type="text" id="quizAnswer" placeholder="Tape ta réponse ici">
+      <button onclick="submitAnswer()">Valider</button>
+      <div class="result" id="quizResult"></div>
+    </section>
+  
+    <footer>
+      <p>Développé par :
+        <a href="https://wa.me/22967517635" target="_blank">
+          <img src="./IMAGE/WhatsApp Image 2025-05-07 à 18.09.42_51b66f00.jpg" alt="Logo">
+        </a>
+      </p>
+    </footer>
+  </div>
+  <div id="lightbox" style="display:none;" onclick="closeLightbox()"></div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+  <script>
+    // Initialisation
+    AOS.init();
+    
+    // Gestion de Supabase (mode dégradé si non configuré)
+    let supabase;
+    try {
+      const supabaseUrl = 'https://gztambxkvutzophjmpwj.supabase.co';
+      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6dGFtYnhrdnV0em9waGptcHdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4MTIyOTIsImV4cCI6MjA2MjM4ODI5Mn0.MAdOtH98On660PDadN3a4kuAKQ9FoBpHi8TbTQ8qA8c';
+      supabase = supabase.createClient(supabaseUrl, supabaseKey);
+      console.log("Supabase initialisé");
+    } catch (e) {
+      console.warn("Supabase non configuré - mode dégradé activé");
+    }
+
+    // Constantes
+    const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
+
+    // Navigation entre sections
+    function showSection(id) {
+      // Masque toutes les sections
+      document.querySelectorAll('section').forEach(section => {
+        section.classList.remove('active');
+      });
+      
+      // Affiche la section demandée
+      document.getElementById(id).classList.add('active');
+      
+      // Charge les données si nécessaire
+      if (id === 'souvenirs') {
+        if (supabase) loadSouvenirs();
+        else document.getElementById('souvenirGallery').innerHTML = '<p>Connectez Supabase pour afficher les souvenirs</p>';
+      }
+      else if (id === 'cours') {
+        if (supabase) loadCourses();
+        else document.getElementById('courseList').innerHTML = '<p>Connectez Supabase pour afficher les cours</p>';
+      }
+      else if (id === 'jeu') {
+        loadQuiz();
+      }
+    }
+
+    // Souvenirs
+    async function addSouvenir() {
+  try {
+    const fileInput = document.getElementById('souvenirFile');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+      alert("Veuillez sélectionner un fichier");
+      return;
+    }
+
+    // Génération d'un nom de fichier unique
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}-${file.name}`;
+    const filePath = `public/${fileName}`; // Important: ajoutez un préfixe
+
+    // 1. Upload du fichier
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('souvenirs')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+    console.log("Upload réussi:", uploadData); // <-- Vérifiez cette ligne
+
+    // 2. Récupération de l'URL publique
+    const { data: { publicUrl } } = supabase.storage
+      .from('souvenirs')
+      .getPublicUrl(filePath);
+
+    console.log("URL publique:", publicUrl); // <-- Vérifiez cette ligne
+
+    // 3. Enregistrement dans la table
+    const { data: insertData, error: insertError } = await supabase
+      .from('souvenirs')
+      .insert([{
+        url: publicUrl,
+        text: document.getElementById('souvenirText').value,
+        type: file.type.startsWith('image') ? 'image' : 'video'
+      }])
+      .select(); // Important pour voir ce qui a été inséré
+
+    if (insertError) throw insertError;
+    console.log("Insertion réussie:", insertData); // <-- Vérifiez cette ligne
+
+    alert("Souvenir ajouté avec succès !");
+    loadSouvenirs();
+    
+  } catch (error) {
+    console.error("Erreur complète:", error);
+    alert(`Erreur lors de l'envoi: ${error.message}`);
+  }
+}
+
+    async function loadSouvenirs() {
+      const gallery = document.getElementById('souvenirGallery');
+      gallery.innerHTML = '<p>Chargement...</p>';
+
+      try {
+        const { data, error } = await supabase
+          .from('souvenirs')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        gallery.innerHTML = data.length ? '' : '<p>Aucun souvenir partagé</p>';
+        
+        data.forEach(item => {
+          const div = document.createElement('div');
+          if (item.type === 'image') {
+            div.innerHTML = `<img src="${item.url}" class="zoomable" onclick="openLightbox(this.src)"><p>${item.text || ''}</p>`;
+          } else {
+            div.innerHTML = `<video controls class="zoomable" src="${item.url}"></video><p>${item.text || ''}</p>`;
+          }
+          gallery.appendChild(div);
+        });
+      } catch (error) {
+        console.error("Erreur:", error);
+        gallery.innerHTML = '<p>Erreur de chargement</p>';
+      }
+    }
+
+    // Cours
+    async function addCourse() {
+      if (!supabase) {
+        alert("La fonctionnalité n'est pas disponible sans configuration Supabase");
+        return;
+      }
+
+      const fileInput = document.getElementById('courseFile');
+      const titleInput = document.getElementById('courseTitle');
+      const file = fileInput.files[0];
+      
+      if (!file || !titleInput.value.trim()) {
+        alert("Veuillez remplir tous les champs");
+        return;
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        alert("Le fichier est trop volumineux (max 15 Mo)");
+        return;
+      }
+
+      const fileName = `${Date.now()}-${file.name}`;
+
+      try {
+        // Upload
+        const { error: uploadError } = await supabase.storage
+          .from('cours')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        // Récupération URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('cours')
+          .getPublicUrl(fileName);
+
+        // Enregistrement
+        const { error: dbError } = await supabase
+          .from('courses')
+          .insert([{
+            title: titleInput.value,
+            url: publicUrl
+          }]);
+
+        if (dbError) throw dbError;
+
+        alert("Cours ajouté !");
+        fileInput.value = '';
+        titleInput.value = '';
+        loadCourses();
+      } catch (error) {
+        console.error("Erreur:", error);
+        alert("Erreur lors de l'envoi");
+      }
+    }
+
+    async function loadCourses() {
+      const courseList = document.getElementById('courseList');
+      courseList.innerHTML = '<p>Chargement...</p>';
+
+      try {
+        const { data, error } = await supabase
+          .from('courses')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        courseList.innerHTML = data.length ? '' : '<p>Aucun cours partagé</p>';
+        
+        data.forEach(item => {
+          const div = document.createElement('div');
+          div.innerHTML = `<p><strong>${item.title}</strong></p><a href="${item.url}" download>Télécharger</a>`;
+          div.setAttribute('data-title', item.title.toLowerCase());
+          courseList.appendChild(div);
+        });
+      } catch (error) {
+        console.error("Erreur:", error);
+        courseList.innerHTML = '<p>Erreur de chargement</p>';
+      }
+    }
+
+    // Recherche de cours
+    document.getElementById('courseSearch').addEventListener('input', function() {
+      const search = this.value.toLowerCase();
+      document.querySelectorAll('#courseList div').forEach(div => {
+        const match = div.getAttribute('data-title').includes(search);
+        div.style.display = match ? 'block' : 'none';
+      });
+    });
+
+    // Jeu
+    const allQuestions = [
+      { question: "Combien de couple on a dans la salle ?", answer: "8" },
+      { question: "Qui a dit : « Le wifi de la salle est une légende. »", answer: "Fatou" },
+      { question: "Qui a dit : « J'ai oublié qu'on avait TD aujourd'hui. »", answer: "Chloe" },
+      { question: "Qui a dit : « On mange d'abord, on verra le cours après. »", answer: "Moussa" },
+      { question: "Qui a dit : « Toujours moi qui ramène les feuilles. »", answer: "Nadine" },
+      { question: "Qui a dit : « Je suis venu juste pour la présence. »", answer: "Ali" },
+      { question: "Qui est la plus belle de la salle ?", answer: "Sarah" },
+      { question: "Nous avons fait combien de cours cette année ?", answer: "12" },
+      { question: "Quel est le nom du DE ?", answer: "Dr. Koné" },
+      { question: "Quel est le nom du PDG ?", answer: "M. Diabaté" }
+    ];
+    
+    let quizQuestions = [], currentQuestion = 0, score = 0;
+    
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+    
+    function loadQuiz() {
+      quizQuestions = shuffle([...allQuestions]).slice(0, 5);
+      currentQuestion = 0;
+      score = 0;
+      document.getElementById('quizAnswer').style.display = 'block';
+      document.querySelector('#jeu button').style.display = 'inline-block';
+      document.getElementById('quizResult').innerHTML = '';
+      showNextQuestion();
+    }
+    
+    function showNextQuestion() {
+      if (currentQuestion >= quizQuestions.length) {
+        const resultDiv = document.getElementById('quizResult');
+        resultDiv.innerHTML = `Ton score : <strong>${score}/5</strong><br><button onclick="loadQuiz()">Rejouer</button>`;
+        resultDiv.style.color = '#000';
+        document.getElementById('quizQuestion').innerText = '';
+        document.getElementById('quizAnswer').style.display = 'none';
+        document.querySelector('#jeu button').style.display = 'none';
+        return;
+      }
+      document.getElementById('quizQuestion').innerText = quizQuestions[currentQuestion].question;
+      document.getElementById('quizAnswer').value = '';
+      document.getElementById('quizResult').textContent = '';
+    }
+    
+    function submitAnswer() {
+      const userAnswer = document.getElementById('quizAnswer').value.trim();
+      const correct = quizQuestions[currentQuestion].answer.toLowerCase();
+      if (userAnswer.toLowerCase() === correct) {
+        document.getElementById('quizResult').textContent = 'Bonne réponse !';
+        document.getElementById('quizResult').style.color = 'green';
+        score++;
+      } else {
+        document.getElementById('quizResult').textContent = 'Réponse fausse.';
+        document.getElementById('quizResult').style.color = 'red';
+      }
+      currentQuestion++;
+      setTimeout(showNextQuestion, 2000);
+    }
+
+    // Lightbox
+    function openLightbox(src) {
+      const lightbox = document.getElementById('lightbox');
+      lightbox.innerHTML = `<div class="lightbox-overlay"><img src="${src}" class="lightbox-content"></div>`;
+      lightbox.style.display = 'flex';
+    }
+
+    function closeLightbox() {
+      const lightbox = document.getElementById('lightbox');
+      lightbox.style.display = 'none';
+      lightbox.innerHTML = '';
+    }
+
+    // Au chargement
+    document.addEventListener('DOMContentLoaded', function() {
+      showSection('souvenirs');
+      loadQuiz(); // Le jeu fonctionne toujours
+    });
+  </script>
+</body>
+</html>
